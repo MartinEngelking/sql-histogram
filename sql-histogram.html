@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Histogram</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/1.0.1/Chart.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.2.js"></script>
+    <script type="text/javascript">
+        $(function(){
+            var $textarea = $('textarea#raw');
+
+            var chart_data = {};
+            
+            var updateChart = function() {
+                var raw = $textarea.val();
+                console.log('Raw: ' + raw);
+                chart_data = {
+                    labels: [],
+                    datasets: [
+                        {
+                            data: []
+                        }
+                    ]
+                };
+
+                try {
+                    // Try to decode JSON
+                    chart_data = $.parseJSON(raw);
+                } catch (err) {
+                    // If this isn't JSON, parse raw text
+
+                    // Try to locate columns
+                    var columns = raw.match(/[^ ]+\s*\|\s*[^ ]+\s*-+\+-+/m)[0].match(/[\w\.]+/g);
+
+                    var series_label = columns[0];
+                    var data_label = columns[1];
+
+                    chart_data.datasets[0].label = data_label;
+
+                    // Extract all interesting tuples, eg. '100 |     1'
+                    var interesting_tuples = raw.match(/[\d\.]+\s*\|\s*[\d\.]+/g);
+
+                    if(!interesting_tuples) {
+                        alert("Can't parse data. Garbage in, garbage out.");
+                        return;
+                    }
+                    // Process each tuple as a label => value on the chart
+                    $.each(interesting_tuples, function(index, tuple) {
+                        console.log('Parsing: ' + tuple);
+                        var label = tuple.match(/^[\d\.]+/)[0];
+                        var value = tuple.match(/[\d\.]+$/)[0];
+                        chart_data.labels.push(label + ' ' + series_label);
+                        chart_data.datasets[0].data.push(value);
+                    });
+                }
+                var pretty_json = JSON.stringify(chart_data,null,2);
+                $textarea.val(pretty_json);
+                console.log('Formatted: ');
+                console.log(chart_data);
+                window.chart_data = chart_data;
+                drawChart();
+            };
+
+            $textarea.on('focus', function() {
+                $(this).val('');
+            });
+
+            $textarea.on('paste', function() {
+               setTimeout(function() {
+                   updateChart();
+               }, 150);
+           });
+
+        function drawChart() {
+                var c = $('#chart');
+                var ctx = c.get(0).getContext("2d");
+                var container = c.parent();
+
+                var $container = $(container);
+
+                c.attr('width', $container.width()); //max width
+
+                c.attr('height', $container.height()); //max height
+
+                //Call a function to redraw other content (texts, images etc)
+                var chart = new Chart(ctx).Bar(chart_data);
+            };
+
+        $(window).resize(drawChart);
+
+        });
+
+
+    </script>
+    <style>
+        textarea#raw {
+            width: 25%;
+            height: 8rem;
+        }
+        div#canvas {
+            width: 90%;
+            height: 400px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <p>
+            Turn your SQL result set into a histogram!
+        </p>
+        <label for="raw">Paste raw text:</label><br/>
+        <textarea id="raw"></textarea>
+    </div>
+    <div id="canvas">
+        <canvas id="chart" width="900" height="700"></canvas>
+    </div>
+</body>
+</html>
