@@ -7,6 +7,7 @@
     <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.2.js"></script>
     <script type="text/javascript">
         $(function(){
+            var chart;
             var $textarea = $('textarea#raw');
             var chart_colors = [
                     '#00599D',
@@ -110,17 +111,36 @@
 
                 c.attr('height', $container.height()); //max height
 
-                //Call a function to redraw other content (texts, images etc)
+                if(chart) {
+                    chart.destroy();
+                }
+                var max_value = 0;
+                for(var i=0; i<chart_data.datasets.length; i++) {
+                    for(var j=0; j<chart_data.datasets[i].data.length; j++) {
+                        max_value = Math.max(max_value, chart_data.datasets[i].data[j]);
+                    }
+                }
+
+                var scale_steps = 10;
+                var scale_step = Math.round(max_value / scale_steps);
+
                 var options = {
                     scaleShowLabels : true,
                     barShowStroke : false,
-                    barStrokeWidth : 0
+                    barStrokeWidth : 0,
+                    responsive: true,
+                    scaleOverride: true,
+                    scaleSteps: scale_steps,
+                    scaleStepWidth: scale_step,
+                    scaleStartValue: 0
+
 
                 };
-                var chart = new Chart(ctx).Bar(chart_data, options);
+
+                chart = new Chart(ctx).Bar(chart_data, options);
             };
 
-        $(window).resize(drawChart);
+//        $(window).resize(drawChart);
 
         });
 
@@ -133,7 +153,7 @@
         }
         div#canvas {
             width: 90%;
-            height: 400px;
+            height: 500px;
             margin: auto;
         }
     </style>
