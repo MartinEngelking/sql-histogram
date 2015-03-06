@@ -8,7 +8,14 @@
     <script type="text/javascript">
         $(function(){
             var $textarea = $('textarea#raw');
-
+            var chart_colors = [
+                    '#00599D',
+                    '#01DF01',
+                    '#FFBF00',
+                    '#585858',
+                    '#AEB404',
+                    '#2E2EFE'
+            ]
             var chart_data = {};
             
             var updateChart = function() {
@@ -29,28 +36,49 @@
                 } catch (err) {
                     // If this isn't JSON, parse raw text
 
+                    var y_label = '';
                     // Try to locate columns
                     var columns = raw.match(/[^ ]+\s*\|\s*[^ ]+\s*-+\+-+/m)[0].match(/[\w\.]+/g);
+                    if(columns) {
+                        y_label = columns.shift();
 
-                    var series_label = columns[0];
-                    var data_label = columns[1];
+                        // The label for each data series
+                        for(var i=0; i < columns.length; i++) {
+                            chart_data.datasets[i].label = columns[i];
+                        }
 
-                    chart_data.datasets[0].label = data_label;
+                        // Extract all interesting tuples, eg. '100 |     1'
+                        var interesting_tuples = raw.match(/[\d\.]+(\s*\|\s*[\d\.]+)+/g);
 
-                    // Extract all interesting tuples, eg. '100 |     1'
-                    var interesting_tuples = raw.match(/[\d\.]+\s*\|\s*[\d\.]+/g);
-
-                    if(!interesting_tuples) {
-                        alert("Can't parse data. Garbage in, garbage out.");
-                        return;
+                        if(!interesting_tuples) {
+                            alert("Can't parse data. Garbage in, garbage out.");
+                            return;
+                        }
                     }
+
+                    var num_columns = 0;
+
                     // Process each tuple as a label => value on the chart
                     $.each(interesting_tuples, function(index, tuple) {
                         console.log('Parsing: ' + tuple);
-                        var label = tuple.match(/^[\d\.]+/)[0];
-                        var value = tuple.match(/[\d\.]+$/)[0];
-                        chart_data.labels.push(label + ' ' + series_label);
-                        chart_data.datasets[0].data.push(value);
+                        // Get all values in that row
+                        var values = tuple.match(/[\d\.]+/g);
+                        // The first value is the label
+                        var label = values.shift();
+                        chart_data.labels.push(y_label + '=' + label);
+
+                        // The rest of the values are data
+                        for(var i=0; i < values.length; i++) {
+                            // If we didn't get column headers, insert a label here
+                            if(!columns) {
+                                chart_data.datasets[i].label = 'Column ' + (i+1);
+                            }
+                            if(!chart_data.datasets[i]) {
+                                chart_data.datasets[i] = { data: [], labels: []};
+                            }
+                            chart_data.datasets[i].fillColor = chart_colors[i];
+                            chart_data.datasets[i].data.push(values[i]);
+                        }
                     });
                 }
                 var pretty_json = JSON.stringify(chart_data,null,2);
@@ -83,7 +111,13 @@
                 c.attr('height', $container.height()); //max height
 
                 //Call a function to redraw other content (texts, images etc)
-                var chart = new Chart(ctx).Bar(chart_data);
+                var options = {
+                    scaleShowLabels : true,
+                    barShowStroke : false,
+                    barStrokeWidth : 0
+
+                };
+                var chart = new Chart(ctx).Bar(chart_data, options);
             };
 
         $(window).resize(drawChart);
